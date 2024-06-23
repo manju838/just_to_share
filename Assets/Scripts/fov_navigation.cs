@@ -4,7 +4,9 @@ using UnityEngine;
 
 public class fov_navigation : MonoBehaviour
 {
-    // FOV Navigation final trial 21/6/24
+    // Assign the root GameObject of the scene in the Inspector
+    public GameObject sceneRoot;         
+
     // Define speeds for rotation and translation
     public float movementSpeed = 2.0f;   // Speed of camera movement
     public float rotationSpeed = 25.0f;  // Speed of camera rotation
@@ -32,11 +34,38 @@ public class fov_navigation : MonoBehaviour
         HandleMouseRotation();
         
     }
-            void CenterCamera()
+
+    Vector3 CalculateCenter(GameObject root)
     {
+        // Get all renderers in the scene
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+
+        if (renderers.Length == 0)
+        {
+            Debug.LogWarning("No renderers found in the scene.");
+            return Vector3.zero;
+        }
+
+        // Initialize bounds with the first renderer
+        Bounds bounds = renderers[0].bounds;
+
+        // Encapsulate all renderers' bounds
+        foreach (Renderer renderer in renderers)
+        {
+            bounds.Encapsulate(renderer.bounds);
+        }
+
+        // The center of the bounds is the center of the scene
+        return bounds.center;
+    }
+            void CenterCamera()
+    {   
+        // Find the center of the scene using the CalculateCenter method
+        Vector3 sceneCenter = CalculateCenter(sceneRoot);
+
         // Center the camera to the midpoint of the scene.
-        // Assuming the scene is centered at (0,0,0) for simplicity. Adjust accordingly if your scene has a different center.
-        Vector3 sceneCenter = new Vector3(0, 0, 0); // Change this if your scene's center is different
+        // Assuming the scene is centered at (0,0,0) for simplicity.
+        // Vector3 sceneCenter = new Vector3(0, 0, 0);
         transform.position = sceneCenter;
     }
             void HandleMovement()
