@@ -8,6 +8,10 @@ public class fov_navigation : MonoBehaviour
     // Define speeds for rotation and translation
     public float movementSpeed = 2.0f;   // Speed of camera movement
     public float rotationSpeed = 25.0f;  // Speed of camera rotation
+    // Parameters for Mouse based control (left mouse click)
+    public float mouseSensitivity = 100.0f;  // Sensitivity for mouse movement
+    private Vector3 lastMousePosition; // Store the last mouse position
+    private bool isRotatingWithMouse = false; // Track if we're currently rotating with the mouse
 
     // Start is called before the first frame update
     void Start()
@@ -23,6 +27,9 @@ public class fov_navigation : MonoBehaviour
         // Handle camera movement and rotation each frame
         HandleMovement();
         HandleRotation();
+
+         // Handle mouse input for rotation
+        HandleMouseRotation();
         
     }
             void CenterCamera()
@@ -106,6 +113,40 @@ public class fov_navigation : MonoBehaviour
         if (Input.GetKey(KeyCode.F))
         {
             transform.Rotate(Vector3.right, rotationSpeed * Time.deltaTime);
+        }
+    }
+
+    // Fn that handles mouse left click based rotation
+    void HandleMouseRotation()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            // Start rotating with the mouse
+            isRotatingWithMouse = true;
+            lastMousePosition = Input.mousePosition;
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            // Stop rotating with the mouse
+            isRotatingWithMouse = false;
+        }
+
+        if (isRotatingWithMouse)
+        {
+            Vector3 currentMousePosition = Input.mousePosition;
+            Vector3 deltaMousePosition = currentMousePosition - lastMousePosition;
+
+            // Calculate rotation based on mouse movement
+            float horizontalRotation = deltaMousePosition.x * mouseSensitivity * Time.deltaTime;
+            float verticalRotation = -deltaMousePosition.y * mouseSensitivity * Time.deltaTime;
+
+            // Apply rotation to the camera
+            transform.Rotate(Vector3.up, horizontalRotation, Space.World);
+            transform.Rotate(Vector3.right, verticalRotation, Space.Self);
+
+            // Update the last mouse position
+            lastMousePosition = currentMousePosition;
         }
     }
 }
