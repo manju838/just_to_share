@@ -15,8 +15,18 @@ public class fov_navigation : MonoBehaviour
     private Vector3 lastMousePosition; // Store the last mouse position
     private bool isRotatingWithMouse = false; // Track if we're currently rotating with the mouse
 
-    // Rigidbody component for the camera
-    private Rigidbody rb;
+    // CharacterController component for the camera
+    private CharacterController characterController;
+
+    // Awake methods are always called before the start method
+    void Awake(){
+         // Get or add the CharacterController component attached to the camera
+        characterController = GetComponent<CharacterController>();
+        if (characterController == null)
+        {
+            characterController = gameObject.AddComponent<CharacterController>();
+        }
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -24,24 +34,8 @@ public class fov_navigation : MonoBehaviour
         // Center the camera in the scene by placing it at the midpoint of the scene
         CenterCamera();
 
-        // Get or add the Rigidbody component attached to the camera
-        rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            rb = gameObject.AddComponent<Rigidbody>();
-        }
-        rb.useGravity = false; // Ensure the camera is not affected by gravity
-        rb.isKinematic = true; // Use kinematic mode for collision detection without physics forces
-
-        // Add a BoxCollider to the camera if not already present
-        if (GetComponent<Collider>() == null)
-        {
-            gameObject.AddComponent<BoxCollider>();
-        }
-        
+       
     }
-
-    
 
     // Update is called once per frame
     void Update()
@@ -50,9 +44,8 @@ public class fov_navigation : MonoBehaviour
         HandleMovement();
         HandleRotation();
 
-         // Handle mouse input for rotation
+        // Handle mouse input for rotation
         HandleMouseRotation();
-        
     }
 
     Vector3 CalculateCenter(GameObject root)
@@ -78,71 +71,55 @@ public class fov_navigation : MonoBehaviour
         // The center of the bounds is the center of the scene
         return bounds.center;
     }
-            void CenterCamera()
-    {   
+
+    void CenterCamera()
+    {
         // Find the center of the scene using the CalculateCenter method
         Vector3 sceneCenter = CalculateCenter(sceneRoot);
 
         // Center the camera to the midpoint of the scene.
-        // Assuming the scene is centered at (0,0,0) for simplicity.
-        // Vector3 sceneCenter = new Vector3(0, 0, 0);
         transform.position = sceneCenter;
     }
-            void HandleMovement()
+
+    void HandleMovement()
     {
         // Initialize movement vectors
-        Vector3 forwardMovement = Vector3.zero;
-        Vector3 strafeMovement = Vector3.zero;
-        Vector3 verticalMovement = Vector3.zero;
+        Vector3 movement = Vector3.zero;
 
         // Front-Back Movement
-        // Move the camera forward/backward with 'W' and 'S' keys
-        if (Input.GetKey(KeyCode.W))
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
         {
-            forwardMovement = transform.forward * movementSpeed * Time.deltaTime;
+            movement += transform.forward * movementSpeed * Time.deltaTime;
         }
-        if (Input.GetKey(KeyCode.S))
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
         {
-            forwardMovement = -transform.forward * movementSpeed * Time.deltaTime;
-        }
-        // Alternatively move the camera forward/backward with Up and Down arrow keys
-        if (Input.GetKey(KeyCode.UpArrow))
-        {
-            forwardMovement = transform.forward * movementSpeed * Time.deltaTime;
-        }
-        if (Input.GetKey(KeyCode.DownArrow))
-        {
-            forwardMovement = -transform.forward * movementSpeed * Time.deltaTime;
+            movement += -transform.forward * movementSpeed * Time.deltaTime;
         }
 
-        // Strafe Movement(Left-Right movement)
-        // Move the camera left/right with 'A' and 'D' keys
+        // Strafe Movement (Left-Right movement)
         if (Input.GetKey(KeyCode.A))
         {
-            strafeMovement = -transform.right * movementSpeed * Time.deltaTime;
+            movement += -transform.right * movementSpeed * Time.deltaTime;
         }
         if (Input.GetKey(KeyCode.D))
         {
-            strafeMovement = transform.right * movementSpeed * Time.deltaTime;
+            movement += transform.right * movementSpeed * Time.deltaTime;
         }
 
         // Height Movement
-        // Move the camera up/down with Q and E keys
         if (Input.GetKey(KeyCode.Q))
         {
-            verticalMovement = Vector3.up * movementSpeed * Time.deltaTime;
+            movement += Vector3.up * movementSpeed * Time.deltaTime;
         }
         if (Input.GetKey(KeyCode.E))
         {
-            verticalMovement = Vector3.down * movementSpeed * Time.deltaTime;
+            movement += Vector3.down * movementSpeed * Time.deltaTime;
         }
 
-        // // Apply the movement to the camera
-        // transform.position += forwardMovement + strafeMovement + verticalMovement;
-
-        // Apply the movement to the camera using the Rigidbody for proper collision detection
-        rb.MovePosition(rb.position + forwardMovement + strafeMovement + verticalMovement);
+        // Apply the movement to the camera using the CharacterController
+        characterController.Move(movement);
     }
+
     void HandleRotation()
     {
         // Rotate the camera left/right with Left and Right arrow keys
@@ -166,7 +143,6 @@ public class fov_navigation : MonoBehaviour
         }
     }
 
-    // Fn that handles mouse left click based rotation
     void HandleMouseRotation()
     {
         if (Input.GetMouseButtonDown(0))
