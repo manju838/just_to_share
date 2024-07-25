@@ -1,7 +1,7 @@
 # Not working from vscode but it works from blender scripting
 
 """
-Take in a csv file using bounding box from YOLO model and create a blender model from it. Make sure csv file is there in C directory
+Take in a csv file using bounding box from YOLO model and create a blender model from it. 
 
 Returns:
     _type_: _description_
@@ -32,6 +32,22 @@ def read_csv(csv_filename):
             xmax = row["xmax"]
             ymax = row["ymax"]
             yield(float(xmin), float(ymin), float(xmax), float(ymax))  # Each row is a list of values
+
+def add_floorplan_image(image_path, scale_x=1.0, scale_y = 1.0):
+    # Load the image
+    bpy.ops.image.open(filepath=image_path)
+    img = bpy.data.images[os.path.basename(image_path)]
+
+    # Create an empty object to hold the image
+    bpy.ops.object.empty_add(type='IMAGE', location=(0, 0, 0))
+    empty_obj = bpy.context.object
+    empty_obj.empty_display_type = 'IMAGE'
+    empty_obj.data = img
+
+    # Scale the image (only in x and y)
+    empty_obj.scale = (scale_x, scale_y, 1.0)
+
+    return empty_obj
 
 class WallBuilder:
     def __init__(self, wall_height=2.5, wall_thickness=0.1, unit="meters"):
@@ -142,26 +158,80 @@ class WallBuilder:
         # Set origin to geometry
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
-    def create_wall_from_bbox(self, xmin, ymin, xmax, ymax):
-        start, end = self.wall_endpoints(xmin, ymin, xmax, ymax)
+    def create_wall_from_bbox(self, xmin, ymin, xmax, ymax, scale_x = 1.0, scale_y = 1.0):
+        # Use the scale_x and scale_y based on scaling designers use in blender
+        scaled_params_x = [xmin, xmax] * scale_x
+        scaled_params_y = [ymin, ymax] * scale_y
+        start, end = self.wall_endpoints(scaled_params_x[0], scaled_params_y[0], scaled_params_x[1], scaled_params_y[1])
         self.create_wall(start, end, self.wall_height, self.wall_thickness)
 
 if __name__ == "__main__":
+    """
+    TODOs:
+    
+    1. Scaling and position of walls don't trace floorplan image
+    ## Alternative: Scale image as designers do and get the scale params from blender.
+    2. Figure out how much scaling is needed for add_floorplan_image()
+    3. Wall junction (post processing of bounding box is better than doing it here)
+    4. Continuous walls (Check for square floorplan image)
+    
+    Completed:
+    
+    1. Add floorplan image using filepath, define scale_x and scale_y
+    2. Read CSV file for bounding box coordinates and create walls using them
+    3. Create a wall using bounding box coordinates
+    4. If image is scaled, code to transform the bounding boxes parameters
+    
+     
+    """
+    # Constants
+    floorplan_path = "./propall1.png"
+    scale_factor = 0.1  # Adjust this scale factor as needed
+    csv_file_path = "propall1_inference_results.csv"
+    
     # Initialize the WallBuilder with units as feet
     wall_builder = WallBuilder(wall_height=10, wall_thickness=0.3, unit="feet")
     
-    # Read CSV file for bounding box coordinates
-    csv_file_path = "propall1_inference_results.csv"
-
+    # 1) Add floorplan image
+    add_floorplan_image(floorplan_path, scale_x = 1, scale_y = 1)
+    
+    # 2) Read CSV file for bounding box coordinates
     for xmin, ymin, xmax, ymax in read_csv(csv_file_path):
-        wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax)
+        wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
     
-    # # Create a wall from bounding box
-    # xmin, ymin, xmax, ymax = 0, 0, 2, 3  # Replace with actual coordinates
-    # wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax)
     
-    # xmin, ymin, xmax, ymax = 0, 3, 2, 7  # Replace with actual coordinates
-    # wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax)
+   
     
-    # xmin, ymin, xmax, ymax = 2, 7, 5, 7  # Replace with actual coordinates
-    # wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax)
+    """
+    # Tests
+    
+    # Constants
+    floorplan_path = "./propall1.png"
+    scale_factor = 0.1  # Adjust this scale factor as needed
+    csv_file_path = "propall1_inference_results.csv"
+    
+    # Initialize the WallBuilder with units as feet
+    wall_builder = WallBuilder(wall_height=10, wall_thickness=0.3, unit="feet")
+    
+    
+    # 1) Add floorplan image
+    add_floorplan_image(floorplan_path, scale_x = 1, scale_y = 1)
+    
+    # 2) Read CSV file for bounding box coordinates
+    for xmin, ymin, xmax, ymax in read_csv(csv_file_path):
+        wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    
+    # 3) Create a wall from bounding box
+    xmin, ymin, xmax, ymax = 0, 0, 2, 3  # Replace with actual coordinates
+    wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    
+    xmin, ymin, xmax, ymax = 0, 3, 2, 7  # Replace with actual coordinates
+    wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    
+    xmin, ymin, xmax, ymax = 2, 7, 5, 7  # Replace with actual coordinates
+    wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    """
+    
+    
+    
+
