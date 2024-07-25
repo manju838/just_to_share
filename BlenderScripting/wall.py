@@ -158,6 +158,27 @@ class WallBuilder:
         # Set origin to geometry
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
+    def add_boolean_object(self, target_obj_name, location=(0, 0, 0), size=(1, 1, 1), apply_boolean=True):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+        boolean_obj = bpy.context.object
+        boolean_obj.scale = size
+        boolean_obj.name = 'BooleanObject'
+        
+        if apply_boolean:
+            target_obj = bpy.data.objects.get(target_obj_name)
+            if target_obj:
+                modifier = target_obj.modifiers.new(name='Boolean', type='BOOLEAN')
+                modifier.object = boolean_obj
+                modifier.operation = 'DIFFERENCE'
+                
+                bpy.context.view_layer.objects.active = target_obj
+                bpy.ops.object.modifier_apply(modifier='Boolean')
+                
+                bpy.data.objects.remove(boolean_obj, do_unlink=True)
+        else:
+            boolean_obj.display_type = 'WIRE'
+
+
     def create_wall_from_bbox(self, xmin, ymin, xmax, ymax, scale_x = 1.0, scale_y = 1.0):
         # Use the scale_x and scale_y based on scaling designers use in blender
         scaled_params_x = [xmin, xmax] * scale_x
@@ -168,12 +189,16 @@ class WallBuilder:
 if __name__ == "__main__":
     """
     TODOs:
+    # High Priority
+    1. Scaling and position of walls don't trace floorplan image 
+    2. Add object (window/door) based on .glb 
+    3. Package (object+boolean) as single object
+    4. Coordinate/location for object(object origin)
     
-    1. Scaling and position of walls don't trace floorplan image
-    ## Alternative: Scale image as designers do and get the scale params from blender.
-    2. Figure out how much scaling is needed for add_floorplan_image()
-    3. Wall junction (post processing of bounding box is better than doing it here)
-    4. Continuous walls (Check for square floorplan image)
+    # Low Priority
+    2. Wall junctions (post processing of bounding box is better than doing it here)
+    3. Continuous walls (Check with square floorplan image, existing code should work in theory)
+    4. Figure out how much scaling is needed for add_floorplan_image fn. ( ## Alternative: Scale image as designers do and get the scale params from blender.)
     
     Completed:
     
@@ -181,6 +206,7 @@ if __name__ == "__main__":
     2. Read CSV file for bounding box coordinates and create walls using them
     3. Create a wall using bounding box coordinates
     4. If image is scaled, code to transform the bounding boxes parameters
+    5. Add Booleans in class but boolean boxes aren't visible on walls, either completely apply changes or have the box that can be applied via a collection manually
     
      
     """
@@ -195,10 +221,16 @@ if __name__ == "__main__":
     # 1) Add floorplan image
     add_floorplan_image(floorplan_path, scale_x = 1, scale_y = 1)
     
-    # 2) Read CSV file for bounding box coordinates
-    for xmin, ymin, xmax, ymax in read_csv(csv_file_path):
-        wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    # # 2) Read CSV file for bounding box coordinates
+    # for xmin, ymin, xmax, ymax in read_csv(csv_file_path):
+    #     wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
     
+    # 3) Create a wall from bounding box
+    xmin, ymin, xmax, ymax = 0, 0, 2, 3  # Replace with actual coordinates
+    wall_builder.create_wall_from_bbox(xmin, ymin, xmax, ymax, scale_x = 1, scale_y = 1)
+    
+    # 3) Add a boolean object (cube) to a wall with specific dimensions
+    wall_builder.add_boolean_object(target_obj_name='Wall', location=(1, 2, 1), size=(0.5, 0.5, 0.5), apply_boolean=False)
     
    
     
