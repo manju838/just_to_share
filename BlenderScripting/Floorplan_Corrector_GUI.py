@@ -1,32 +1,37 @@
-import tkinter as tk
-from tkinter import filedialog
-import cv2
-from PIL import Image, ImageTk
+import tkinter as tk  # Used for creating the GUI.
+from tkinter import filedialog  # Module in tkinter to open file dialogs.
+import cv2  # Used for image processing.
+from PIL import Image, ImageTk  # Used to handle images in the GUI.
 import os
-import pandas as pd
-import numpy as np
-from sklearn.cluster import DBSCAN
-import json
-import networkx as nx
+import pandas as pd  # Used to handle CSV file data.
+import numpy as np  # Used for numerical operations.
+from sklearn.cluster import DBSCAN  # DBSCAN is used for clustering points.
+import json  # json is used to save and load JSON files.
+import networkx as nx  # NetworkX is used for graph-based data structure.
 
 """
-Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point
+Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point, undo
 """
 
 class WallEndpointsEditor:
+    # The class WallEndpointsEditor is defined to manage the application.
     def __init__(self, root):
+        ########## Create a root tkinter window and title it ##########
         self.root = root
         self.root.title("Wall Endpoints Editor")
 
+        ########## Create GUI (Canvas for hosting image/drawings + Frame for hosting buttons) ##########        
         self.canvas = tk.Canvas(self.root, cursor="cross")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         button_frame = tk.Frame(self.root)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
 
+        # Initialize canvas dimensions ##########
         self.canvas_width = 1280
         self.canvas_height = 720
 
+        ########## Define constants ##########
         self.csv_path = ""
         self.img_path = ""
         self.graph = nx.Graph()
@@ -38,6 +43,7 @@ class WallEndpointsEditor:
         self.image = None
         self.image_tk = None
 
+        # Add corresponding tracking variables ##########
         self.add_point_active = False
         self.link_points_active = False
         self.delink_points_active = False
@@ -46,6 +52,8 @@ class WallEndpointsEditor:
         self.scale_factor_x = 1
         self.scale_factor_y = 1
 
+        # Buttons on GUI frame ##########
+        self.no_of_btns = 10 # No. of buttons on GUI frame
         self.upload_csv_button = tk.Button(button_frame, text="Upload CSV", command=self.upload_csv)
         self.upload_csv_button.grid(row=0, column=0, sticky='ew', padx=5)
 
@@ -57,8 +65,7 @@ class WallEndpointsEditor:
 
         self.add_button = tk.Button(button_frame, text="Add Point", command=self.add_point_mode)
         self.add_button.grid(row=0, column=3, sticky='ew', padx=5)
-        ###############################
-
+        
         self.link_button = tk.Button(button_frame, text="Link Points", command=self.link_points_mode)
         self.link_button.grid(row=0, column=4, sticky='ew', padx=5)
 
@@ -73,27 +80,46 @@ class WallEndpointsEditor:
         
         self.delete_button = tk.Button(button_frame, text="Delete Point", command=self.delete_point_mode)
         self.delete_button.grid(row=0, column=8, sticky='ew', padx=5)
+        
+        self.undo_button = tk.Button(button_frame, text="Undo", command=self.undo)
+        self.undo_button.grid(row=0, column=9, sticky='ew', padx=5)
+        
+        # ------------------- Code to spread btns in frame -------------------
+        # for i in range(self.total_buttons):
+        #     button_frame.grid_columnconfigure(i, weight=1)
+        # --------------------------------------------------------------------
+        
+        # tkinter uses bind fn. to bind functionality for various tkinter events(https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events) 
 
         self.canvas.bind("<Button-1>", self.handle_canvas_click)
         self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
 
     def upload_csv(self):
+        """
+        Opens a file dialog to select a CSV file and stores the path.
+        """
         self.csv_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         print(f"CSV path: {self.csv_path}")
 
     def upload_image(self):
+        """
+        Opens a file dialog to select an image file, stores the path, and calls display_image()
+        """
         self.img_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
         print(f"Image path: {self.img_path}")
         self.display_image()
 
     def display_image(self):
+        """
+        Show the image from upload_image() on the canvas.
+        """
         if self.img_path:
             img = cv2.imread(self.img_path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             self.image = Image.fromarray(img)
             original_width, original_height = self.image.size
             aspect_ratio = original_width / original_height
-            if aspect_ratio > 1:
+            if (aspect_ratio > 1):
                 self.canvas_width = min(self.canvas_width, 1280)
                 self.canvas_height = int(self.canvas_width / aspect_ratio)
             else:
@@ -106,6 +132,17 @@ class WallEndpointsEditor:
             resized_image = self.image.resize((self.canvas_width, self.canvas_height), Image.Resampling.LANCZOS)
             self.image_tk = ImageTk.PhotoImage(resized_image)
             self.canvas.create_image(0, 0, anchor=tk.NW, image=self.image_tk)
+            self.draw_wall_endpoints()
+    
+    def process(self):
+        """
+        Logic to visualise the YOLO based bounding boxes for wall detection and its corresponding endpoints 
+        """
+        if self.csv_path and self.img_path:
+            self.graph.clear() # Remove all nodes and edges from the graph
+            self.visualise_boundingbox(self.csv_path, self.img_path)
+            self.print_graph_statistics()
+            self.display_image()
             self.draw_wall_endpoints()
 
     def draw_wall_endpoints(self):
@@ -159,6 +196,7 @@ class WallEndpointsEditor:
         self.modify_point_active = False
         self.selected_point = None
 
+    ########## Tkinter Events response functionality ##########
     def handle_canvas_click(self, event):
         x = event.x / self.scale_factor_x
         y = event.y / self.scale_factor_y
@@ -208,6 +246,7 @@ class WallEndpointsEditor:
             if closest_node in self.graph.nodes:
                 self.graph.remove_node(closest_node)
                 self.draw_wall_endpoints()
+                self.action_history.append(("remove_node", closest_node))
                 self.delete_point_active = False
                 print(f"Point {closest_node} deleted")
 
@@ -219,18 +258,13 @@ class WallEndpointsEditor:
             self.draw_wall_endpoints()
 
     def find_closest_node(self, point):
+        """
+        Finds the closest point in a list of points to a given target point.(Euclidean distance)
+        """
         closest_node = min(self.graph.nodes, key=lambda n: np.linalg.norm(np.array(self.graph.nodes[n]['coord']) - np.array(point)))
         return closest_node
 
-    def process(self):
-        # Placeholder for the process logic
-        print("Processing...")
-        if self.csv_path and self.img_path:
-            self.graph.clear() # Remove all nodes and edges from the graph
-            self.visualise_boundingbox(self.csv_path, self.img_path)
-            self.print_graph_statistics()
-            self.display_image()
-            self.draw_wall_endpoints()
+    
 
     def visualise_boundingbox(self, csv, img):
         # Read image and csv files
@@ -278,10 +312,18 @@ class WallEndpointsEditor:
         self.print_graph_statistics()
 
     def print_graph_statistics(self):
+        """
+        Prints the graph statistics: nodes and edges
+        """
         print(f"Graph Nodes: {len(self.graph.nodes)}")
+        print(f"Graph Nodes: {self.graph.nodes}")
         print(f"Graph Edges: {len(self.graph.edges)}")
+        print(f"Graph Edges: {self.graph.edges}")
 
     def save(self):
+        """
+        Save the wallendpoints and its corresponding walls as a json file. 
+        """
         save_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
         if save_path:
             data = {
@@ -291,6 +333,35 @@ class WallEndpointsEditor:
             with open(save_path, 'w') as f:
                 json.dump(data, f, indent=4)
             print(f"Graph saved to {save_path}")
+
+    def undo(self):
+        """
+        Undo the last action performed on the graph. If no actions have been performed, do nothing.
+        """
+        if not self.action_history:
+            return
+
+        last_action = self.action_history.pop()
+        action_type = last_action[0]
+
+        if action_type == "add_node":
+            node_id = last_action[1]
+            self.graph.remove_node(node_id)
+
+        elif action_type == "remove_node":
+            node_id = last_action[1]
+            coord = last_action[2]
+            self.graph.add_node(node_id, coord=coord)
+
+        elif action_type == "add_edge":
+            node1, node2 = last_action[1], last_action[2]
+            self.graph.remove_edge(node1, node2)
+
+        elif action_type == "remove_edge":
+            node1, node2 = last_action[1], last_action[2]
+            self.graph.add_edge(node1, node2)
+
+        self.draw_wall_endpoints()
 
 if __name__ == "__main__":
     root = tk.Tk()
