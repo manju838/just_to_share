@@ -8,10 +8,9 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 import json
 import networkx as nx
-import matplotlib.pyplot as plt
 
 """
-Final version of GUI copy
+Upload csv, upload image, process, save, add point, link point, delink point, modify point
 """
 
 class WallEndpointsEditor:
@@ -68,11 +67,11 @@ class WallEndpointsEditor:
         self.save_button = tk.Button(button_frame, text="Save", command=self.save)
         self.save_button.grid(row=0, column=6, sticky='ew', padx=5)
         
-        # self.modify_button = tk.Button(button_frame, text="Modify Point", command=self.modify_point_mode)
-        # self.modify_button.grid(row=0, column=7, sticky='ew', padx=5)
+        self.modify_button = tk.Button(button_frame, text="Modify Point", command=self.modify_point_mode)
+        self.modify_button.grid(row=0, column=7, sticky='ew', padx=5)
 
         self.canvas.bind("<Button-1>", self.handle_canvas_click)
-        # self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
+        self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
 
     def upload_csv(self):
         self.csv_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
@@ -124,18 +123,28 @@ class WallEndpointsEditor:
     def add_point_mode(self):
         self.add_point_active = True
         self.link_points_active = False
+        self.delink_points_active = False
         self.modify_point_active = False
 
     def link_points_mode(self):
         self.link_points_active = True
         self.add_point_active = False
+        self.delink_points_active = False
         self.modify_point_active = False
         self.selected_point = None
 
     def delink_points_mode(self):
         self.delink_points_active = True
         self.add_point_active = False
+        self.link_points_active = False
         self.modify_point_active = False
+        self.selected_point = None
+    
+    def modify_point_mode(self):
+        self.modify_point_active = True
+        self.add_point_active = False
+        self.link_points_active = False
+        self.delink_points_active = False
         self.selected_point = None
 
     def handle_canvas_click(self, event):
@@ -178,6 +187,17 @@ class WallEndpointsEditor:
                 self.delink_points_active = False
                 print(f"Edge removed between {self.selected_point} and {closest_node}")
 
+        elif self.modify_point_active:
+            self.selected_point = self.find_closest_node((x, y))
+            print(f"Selected point for modification: {self.selected_point}")
+
+    def handle_canvas_drag(self, event):
+        if self.modify_point_active and self.selected_point is not None:
+            x = event.x / self.scale_factor_x
+            y = event.y / self.scale_factor_y
+            self.graph.nodes[self.selected_point]['coord'] = (x, y)
+            self.draw_wall_endpoints()
+
     def find_closest_node(self, point):
         closest_node = min(self.graph.nodes, key=lambda n: np.linalg.norm(np.array(self.graph.nodes[n]['coord']) - np.array(point)))
         return closest_node
@@ -191,7 +211,7 @@ class WallEndpointsEditor:
             self.print_graph_statistics()
             self.display_image()
             self.draw_wall_endpoints()
-    
+
     def visualise_boundingbox(self, csv, img):
         # Read image and csv files
         results_df = pd.read_csv(csv)
@@ -200,152 +220,57 @@ class WallEndpointsEditor:
         img_height, img_width = input_img.shape[:2]
 
         wall_endpoints_pairs = []
-        for index, row in results_df.iterrows():
-            x1 = int(row['xmin'])
-            y1 = int(row['ymin'])
-            x2 = int(row['xmax'])
-            y2 = int(row['ymax'])
-            start_point, end_point = self.wall_endpoints(x1, y1, x2, y2)
-            wall_endpoints_pairs.append([start_point, end_point]) # List of walls, each wall is a list with 2 coordinate tuples  
-        # print(wall_endpoints_pairs)
-        
-        wall_endpoints_np = np.array([point for pair in wall_endpoints_pairs for point in pair])
-        eps = self.calculate_eps((img_width, img_height), scale_factor=0.03)
-        clustered_wall_endpoints = self.cluster_coordinates(wall_endpoints_np, eps)
-        # print(clustered_wall_endpoints)
-        snapped_wall_endpoints = self.snap_coordinates(clustered_wall_endpoints)
-        # print(snapped_wall_endpoints)
-        self.add_nodes_and_edges(wall_endpoints_pairs, snapped_wall_endpoints)
-    
-    def wall_endpoints(self, xmin, ymin, xmax, ymax):
-        """
-        Determine the start and end points of the wall based on its bounding box (xyxy coordinates).
-        """
-        width = abs(xmax - xmin)
-        height = abs(ymax - ymin)
-        if height >= width:
-            x_top, y_top = xmin + (width / 2), ymin
-            x_bottom, y_bottom = xmin + (width / 2), ymax
-            return (x_top, y_top), (x_bottom, y_bottom)
-        else:
-            x_right, y_right = xmin, ymin + (height / 2)
-            x_left, y_left = xmax, ymin + (height / 2)
-            return (x_right, y_right), (x_left, y_left)
-    
-    def calculate_eps(self, image_size, scale_factor=0.01):
-        """
-        Compute the epsilon value for DBSCAN clustering based on the image size.
-        Epsilon value is the maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. 
-        """
-        width, height = image_size
-        diagonal = np.sqrt(width**2 + height**2)
-        eps = scale_factor * diagonal
-        return eps
-    
-    def cluster_coordinates(self, coordinates, eps, min_samples=1):
-        """
-        Clusters the coordinates using DBSCAN and computes centroids of clusters.
-        """
-        clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(coordinates)
-        unique_labels = set(clustering.labels_)
-        clustered_coordinates = [] # List of clustered coordinates
+        for _, row in results_df.iterrows():
+            if row['name'] == 'wall':
+                x1, y1 = int(row['xmin']), int(row['ymin'])
+                x2, y2 = int(row['xmax']), int(row['ymax'])
+                cv2.rectangle(input_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.circle(input_img, (x1, y1), 5, (0, 0, 255), -1)
+                cv2.circle(input_img, (x2, y2), 5, (0, 0, 255), -1)
+                wall_endpoints_pairs.append([(x1, y1), (x2, y2)])
 
-        # Calculate Centroids of Clusters
-        for label in unique_labels: # looping through each of the unique centroids
-            if label == -1:
-                # The label -1 is used by DBSCAN to indicate noise points, which are not part of any cluster. 
-                continue
-            class_member_mask = (clustering.labels_ == label)
-            cluster = coordinates[class_member_mask]
-            centroid = cluster.mean(axis=0)
-            clustered_coordinates.append(tuple(centroid))
-        return clustered_coordinates # returns the list of centroids
-    
-    def snap_coordinates(self, points, threshold=10):
-        """
-        Snaps points that are within a certain threshold to their average position to reduce noise.
-        """
-        snapped_points = [list(point) for point in points] # Converting pts from immutable tuples to mutable lists 
+        self.wall_endpoints_pairs = wall_endpoints_pairs
+        print("Wall Endpoints Pairs: ", wall_endpoints_pairs)
 
-        for i in range(len(snapped_points)):
-            for j in range(i + 1, len(snapped_points)):
-                # Check if coordinate dist. wrt x axis < threshold
-                if abs(snapped_points[i][0] - snapped_points[j][0]) < threshold:
-                    avg_x = (snapped_points[i][0] + snapped_points[j][0]) / 2
-                    snapped_points[i][0] = avg_x
-                    snapped_points[j][0] = avg_x
-                # Check if coordinate dist. wrt y axis < threshold
-                if abs(snapped_points[i][1] - snapped_points[j][1]) < threshold:
-                    avg_y = (snapped_points[i][1] + snapped_points[j][1]) / 2
-                    snapped_points[i][1] = avg_y
-                    snapped_points[j][1] = avg_y
+        cluster_model = DBSCAN(eps=30, min_samples=1)
+        cluster_points = [pt for pair in wall_endpoints_pairs for pt in pair]
+        cluster_model.fit(cluster_points)
+        cluster_labels = cluster_model.labels_
 
-        # Converting pts from mutable lists to immutable tuples 
-        snapped_points = [tuple(point) for point in snapped_points]
-        return snapped_points
-    
-    def add_nodes_and_edges(self, wall_endpoints_pairs, snapped_wall_endpoints):
-        node_id = 0 # counter to assign unique IDs to nodes
+        clusters = {}
+        for point, label in zip(cluster_points, cluster_labels):
+            if label not in clusters:
+                clusters[label] = []
+            clusters[label].append(point)
+
+        cluster_centers = [np.mean(clusters[label], axis=0).astype(int).tolist() for label in clusters]
+
+        self.graph.clear()  # Clear the graph before adding new nodes and edges
+        for idx, center in enumerate(cluster_centers):
+            self.graph.add_node(idx, coord=center)
+
         for pair in wall_endpoints_pairs:
-            start, end = pair
-            # Find closest point at start and end of wall
-            snapped_start = self.find_closest_point(start, snapped_wall_endpoints)
-            # print("snapped_wall_endpoints:", snapped_wall_endpoints) # List of tuples
-            # print("Snapped Start:",snapped_start) # Tuple
-            snapped_end = self.find_closest_point(end, snapped_wall_endpoints)
-                        
-            if snapped_start not in self.graph:
-                self.graph.add_node(node_id, coord=snapped_start)
-                node_id += 1
-            if snapped_end not in self.graph:
-                self.graph.add_node(node_id, coord=snapped_end)
-                node_id += 1
-            self.graph.add_edge(self.get_node_id_by_coord(snapped_start), self.get_node_id_by_coord(snapped_end))
-    
-    def find_closest_point(self, target_point, points):
-        """
-        Finds the closest point in a list of points to a given target point.(Euclidean distance)
-        """
-        closest_point = min(points, key=lambda point: np.linalg.norm(np.array(point) - np.array(target_point)))
-        return closest_point
-    
-    def get_node_id_by_coord(self, coord):
-        """
-        Retrieves the node ID corresponding to a given coordinate.
-        """
-        for node_id, data in self.graph.nodes(data=True):
-            if data['coord'] == coord:
-                # print(f"{node_id}:{coord}")
-                return node_id
-        return None
-    
-    def save(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
-        if not file_path:
-            return
-        data = {
-            "nodes": [{"id": node, "coord": coord} for node, coord in self.graph.nodes(data="coord")],
-            "edges": [{"source": source, "target": target} for source, target in self.graph.edges]
-        }
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        print(f"Graph saved to {file_path}")
-    
+            node1 = self.find_closest_node(pair[0])
+            node2 = self.find_closest_node(pair[1])
+            if node1 != node2:
+                self.graph.add_edge(node1, node2)
+
+        self.print_graph_statistics()
+
     def print_graph_statistics(self):
-        print("Graph:\n")
-        for node_id, data in self.graph.nodes(data=True):
-            print(f"Node ID: {node_id}, Data: {data}")
-        """
-        Eg: Node ID: 0, Data: {'coord': (130.0625, 136.75)}
-            Node ID: 1, Data: {'coord': (419.75, 147.0)}
-        """
-        print("###########################################")
-        # print(type(self.graph)) # <class 'networkx.classes.graph.Graph'>
-        edges = self.graph.edges()
-        # If you want to convert the EdgeView to a list
-        edges_list = list(edges)
-        # Print edges
-        print("Graph Edges:\n", edges_list) # List of tuples with nodeids for start and endwallpoints
+        print(f"Graph Nodes: {len(self.graph.nodes)}")
+        print(f"Graph Edges: {len(self.graph.edges)}")
+
+    def save(self):
+        save_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if save_path:
+            data = {
+                "nodes": {node: {"coord": list(map(float, self.graph.nodes[node]['coord']))} for node in self.graph.nodes},
+                "edges": list(self.graph.edges)
+            }
+            with open(save_path, 'w') as f:
+                json.dump(data, f, indent=4)
+            print(f"Graph saved to {save_path}")
 
 if __name__ == "__main__":
     root = tk.Tk()
