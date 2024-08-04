@@ -10,6 +10,10 @@ import json
 import networkx as nx
 import matplotlib.pyplot as plt
 
+"""
+Final version of GUI copy
+"""
+
 class WallEndpointsEditor:
     def __init__(self, root):
         self.root = root
@@ -60,8 +64,15 @@ class WallEndpointsEditor:
 
         self.delink_button = tk.Button(button_frame, text="Delink Points", command=self.delink_points_mode)
         self.delink_button.grid(row=0, column=5, sticky='ew', padx=5)
+        
+        self.save_button = tk.Button(button_frame, text="Save", command=self.save)
+        self.save_button.grid(row=0, column=6, sticky='ew', padx=5)
+        
+        # self.modify_button = tk.Button(button_frame, text="Modify Point", command=self.modify_point_mode)
+        # self.modify_button.grid(row=0, column=7, sticky='ew', padx=5)
 
         self.canvas.bind("<Button-1>", self.handle_canvas_click)
+        # self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
 
     def upload_csv(self):
         self.csv_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
@@ -177,10 +188,9 @@ class WallEndpointsEditor:
         if self.csv_path and self.img_path:
             self.graph.clear() # Remove all nodes and edges from the graph
             self.visualise_boundingbox(self.csv_path, self.img_path)
-            # self.print_graph_edges()
+            self.print_graph_statistics()
             self.display_image()
             self.draw_wall_endpoints()
-            # self.print_graph()
     
     def visualise_boundingbox(self, csv, img):
         # Read image and csv files
@@ -308,6 +318,34 @@ class WallEndpointsEditor:
                 # print(f"{node_id}:{coord}")
                 return node_id
         return None
+    
+    def save(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if not file_path:
+            return
+        data = {
+            "nodes": [{"id": node, "coord": coord} for node, coord in self.graph.nodes(data="coord")],
+            "edges": [{"source": source, "target": target} for source, target in self.graph.edges]
+        }
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=4)
+        print(f"Graph saved to {file_path}")
+    
+    def print_graph_statistics(self):
+        print("Graph:\n")
+        for node_id, data in self.graph.nodes(data=True):
+            print(f"Node ID: {node_id}, Data: {data}")
+        """
+        Eg: Node ID: 0, Data: {'coord': (130.0625, 136.75)}
+            Node ID: 1, Data: {'coord': (419.75, 147.0)}
+        """
+        print("###########################################")
+        # print(type(self.graph)) # <class 'networkx.classes.graph.Graph'>
+        edges = self.graph.edges()
+        # If you want to convert the EdgeView to a list
+        edges_list = list(edges)
+        # Print edges
+        print("Graph Edges:\n", edges_list) # List of tuples with nodeids for start and endwallpoints
 
 if __name__ == "__main__":
     root = tk.Tk()
