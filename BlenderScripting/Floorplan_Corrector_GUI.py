@@ -10,7 +10,9 @@ import json  # json is used to save and load JSON files.
 import networkx as nx  # NetworkX is used for graph-based data structure.
 
 """
-Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point, undo
+Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point, undo.
+
+This is the most recent working version.
 """
 
 class WallEndpointsEditor:
@@ -285,7 +287,7 @@ class WallEndpointsEditor:
 
         self.wall_endpoints_pairs = wall_endpoints_pairs
         print("Wall Endpoints Pairs: ", wall_endpoints_pairs)
-
+        
         cluster_model = DBSCAN(eps=30, min_samples=1)
         cluster_points = [pt for pair in wall_endpoints_pairs for pt in pair]
         cluster_model.fit(cluster_points)
