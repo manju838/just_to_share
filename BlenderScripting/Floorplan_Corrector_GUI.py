@@ -10,7 +10,7 @@ import json
 import networkx as nx
 
 """
-Upload csv, upload image, process, save, add point, link point, delink point, modify point
+Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point
 """
 
 class WallEndpointsEditor:
@@ -57,6 +57,7 @@ class WallEndpointsEditor:
 
         self.add_button = tk.Button(button_frame, text="Add Point", command=self.add_point_mode)
         self.add_button.grid(row=0, column=3, sticky='ew', padx=5)
+        ###############################
 
         self.link_button = tk.Button(button_frame, text="Link Points", command=self.link_points_mode)
         self.link_button.grid(row=0, column=4, sticky='ew', padx=5)
@@ -69,6 +70,9 @@ class WallEndpointsEditor:
         
         self.modify_button = tk.Button(button_frame, text="Modify Point", command=self.modify_point_mode)
         self.modify_button.grid(row=0, column=7, sticky='ew', padx=5)
+        
+        self.delete_button = tk.Button(button_frame, text="Delete Point", command=self.delete_point_mode)
+        self.delete_button.grid(row=0, column=8, sticky='ew', padx=5)
 
         self.canvas.bind("<Button-1>", self.handle_canvas_click)
         self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
@@ -146,6 +150,14 @@ class WallEndpointsEditor:
         self.link_points_active = False
         self.delink_points_active = False
         self.selected_point = None
+    
+    def delete_point_mode(self):
+        self.delete_point_active = True
+        self.add_point_active = False
+        self.link_points_active = False
+        self.delink_points_active = False
+        self.modify_point_active = False
+        self.selected_point = None
 
     def handle_canvas_click(self, event):
         x = event.x / self.scale_factor_x
@@ -190,6 +202,14 @@ class WallEndpointsEditor:
         elif self.modify_point_active:
             self.selected_point = self.find_closest_node((x, y))
             print(f"Selected point for modification: {self.selected_point}")
+        
+        elif self.delete_point_active:
+            closest_node = self.find_closest_node((x, y))
+            if closest_node in self.graph.nodes:
+                self.graph.remove_node(closest_node)
+                self.draw_wall_endpoints()
+                self.delete_point_active = False
+                print(f"Point {closest_node} deleted")
 
     def handle_canvas_drag(self, event):
         if self.modify_point_active and self.selected_point is not None:
