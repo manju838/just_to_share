@@ -12,7 +12,7 @@ import networkx as nx  # NetworkX is used for graph-based data structure.
 """
 Upload csv, upload image, process, save, add point, link point, delink point, modify point, delete point, undo.
 
-This is the most recent working version.
+snap is working to an extent
 """
 
 class WallEndpointsEditor:
@@ -55,7 +55,7 @@ class WallEndpointsEditor:
         self.scale_factor_y = 1
 
         # Buttons on GUI frame ##########
-        self.no_of_btns = 10 # No. of buttons on GUI frame
+        self.no_of_btns = 11 # No. of buttons on GUI frame
         self.upload_csv_button = tk.Button(button_frame, text="Upload CSV", command=self.upload_csv)
         self.upload_csv_button.grid(row=0, column=0, sticky='ew', padx=5)
 
@@ -86,8 +86,12 @@ class WallEndpointsEditor:
         self.undo_button = tk.Button(button_frame, text="Undo", command=self.undo)
         self.undo_button.grid(row=0, column=9, sticky='ew', padx=5)
         
+        self.snap_button = tk.Button(button_frame, text="Snap", command=self.snap_points)
+        self.snap_button.grid(row=0, column=10, sticky='ew', padx=5)
+
+        
         # ------------------- Code to spread btns in frame -------------------
-        # for i in range(self.total_buttons):
+        # for i in range(self.no_of_btns):
         #     button_frame.grid_columnconfigure(i, weight=1)
         # --------------------------------------------------------------------
         
@@ -96,6 +100,44 @@ class WallEndpointsEditor:
         self.canvas.bind("<Button-1>", self.handle_canvas_click)
         self.canvas.bind("<B1-Motion>", self.handle_canvas_drag)
 
+    def snap_points(self):
+        """
+        Adjust the coordinates of nodes so that close endpoints are aligned.
+        """
+        snap_threshold = 20  # Define a threshold for snapping
+
+        # Get the list of all node coordinates
+        node_coords = [self.graph.nodes[node]['coord'] for node in self.graph.nodes]
+
+        # Snap nodes along the x-axis
+        for i, coord1 in enumerate(node_coords):
+            for j, coord2 in enumerate(node_coords):
+                if i != j:
+                    # Check if the x-coordinates are within the snapping threshold
+                    if abs(coord1[0] - coord2[0]) < snap_threshold:
+                        average_x = (coord1[0] + coord2[0]) / 2
+                        new_coord1 = (average_x, coord1[1])
+                        new_coord2 = (average_x, coord2[1])
+                        self.graph.nodes[i]['coord'] = new_coord1
+                        self.graph.nodes[j]['coord'] = new_coord2
+
+        # Snap nodes along the y-axis
+        for i, coord1 in enumerate(node_coords):
+            for j, coord2 in enumerate(node_coords):
+                if i != j:
+                    # Check if the y-coordinates are within the snapping threshold
+                    if abs(coord1[1] - coord2[1]) < snap_threshold:
+                        average_y = (coord1[1] + coord2[1]) / 2
+                        new_coord1 = (coord1[0], average_y)
+                        new_coord2 = (coord2[0], average_y)
+                        self.graph.nodes[i]['coord'] = new_coord1
+                        self.graph.nodes[j]['coord'] = new_coord2
+
+        self.draw_wall_endpoints()  # Redraw the wall endpoints with the updated coordinates
+        print("Points snapped")
+
+
+    
     def upload_csv(self):
         """
         Opens a file dialog to select a CSV file and stores the path.
