@@ -1,0 +1,6 @@
+.drawing-canvas {
+    display: block;
+    background-color: white;
+    cursor: crosshair;
+}
+
