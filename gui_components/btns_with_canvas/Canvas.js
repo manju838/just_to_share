@@ -1,28 +1,50 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './Canvas.css';
 
-const Canvas = ({ isDrawing }) => {
+const Canvas = ({ isDrawing, isMoving, isDelete }) => {
+    //////////////////////// State Management ////////////////////////
+
+    //////// Variable Type1: Canvas Reference ////////
     const canvasRef = useRef(null);
-    const [pan, setPan] = useState({ x: 0, y: 0 });
-    const [isPanning, setIsPanning] = useState(false);
-    const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
+
+    //////// Variable Type2: Panning ////////
+    const [pan, setPan] = useState({ x: 0, y: 0 }); // State to store the panning offset
+    const [isPanning, setIsPanning] = useState(false); // State to track if the user is panning
+    const [startPos, setStartPos] = useState({ x: 0, y: 0 }); // State to store the initial position where panning starts
+
+    //////// Variable Type3: Zooming ////////
+    const [zoom, setZoom] = useState(1); // State to manage zoom level
+
+    //////// Variable Type4: Dots ////////
     const [dots, setDots] = useState([]);  // State to store the dots in grid coordinates
     const [draggingDot, setDraggingDot] = useState(null); // State to track the dot being dragged
 
+    //////// Variable Type5: Grid Definitions ////////
+    /* 
+    Meter version: Major grid divided into 10 minor grids 
+    */
     const majorGridSize = 100;
     const minorGridSize = majorGridSize / 10;
 
-    // Function to start panning
+    //////////////////////// Utility fns. ////////////////////////
+    
+    //////// Utility fns. Type1: Panning ////////
     const startPan = (e) => {
+        // Function to start panning
         if (!isDrawing) {  // Disable panning when in Draw Wall mode
             setIsPanning(true);
             setStartPos({ x: e.clientX - pan.x, y: e.clientY - pan.y });
         }
+        else if (!isMoving){
+
+        }
+        else if (!isDelete){
+
+        }
     };
 
-    // Function to pan the canvas
     const panCanvas = (e) => {
+        // Function to pan the canvas
         if (isPanning) {
             setPan({
                 x: e.clientX - startPos.x,
@@ -31,24 +53,26 @@ const Canvas = ({ isDrawing }) => {
         }
     };
 
-    // Function to end panning
     const endPan = () => {
+        // Function to end panning
         setIsPanning(false);
     };
 
-    // Function to handle zooming
-    const handleZoom = (e) => {
-        e.preventDefault();
-        const zoomFactor = 1.1;
-        const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor;
+    //////// Utility fns. Type2: Zooming ////////
 
-        if (newZoom >= 0.5 && newZoom <= 3) {
+    const handleZoom = (e) => {
+        // Function to handle zooming
+        e.preventDefault(); //stop the default scrolling behavior of the browser when the user scrolls, ensuring that the zoom action only affects your canvas.
+        const zoomFactor = 1.1; // Each scroll will increase or decrease the zoom by 10%.
+        const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor; // e.deltaY is vertical scroll amount, if it is greater than 0 then it is zoom out
+
+        if (newZoom >= 0.9 && newZoom <= 1.5) {
             setZoom(newZoom);
         }
     };
 
-    // Function to calculate grid coordinates based on mouse position and current pan/zoom
     const calculateGridCoordinates = (x, y) => {
+        // Function to calculate grid coordinates based on mouse position and current pan/zoom
         const adjustedX = (x - pan.x) / zoom;
         const adjustedY = (y - pan.y) / zoom;
 
@@ -58,8 +82,8 @@ const Canvas = ({ isDrawing }) => {
         return { x: snappedX, y: snappedY };
     };
 
-    // Function to handle mouse click on the canvas
     const handleCanvasClick = (e) => {
+        // Function to handle mouse click on the canvas
         if (isDrawing) {
             const rect = canvasRef.current.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -71,15 +95,15 @@ const Canvas = ({ isDrawing }) => {
         }
     };
 
-    // Function to start dragging a dot
     const startDragDot = (index) => (e) => {
+        // Function to start dragging a dot
         if (isDrawing) {
             setDraggingDot(index);
         }
     };
 
-    // Function to drag a dot
     const dragDot = (e) => {
+        // Function to drag a dot
         if (draggingDot !== null) {
             const rect = canvasRef.current.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -95,20 +119,21 @@ const Canvas = ({ isDrawing }) => {
         }
     };
 
-    // Function to end dragging a dot
     const endDragDot = () => {
+        // Function to end dragging a dot
         setDraggingDot(null);
     };
 
-    // Function to convert grid coordinates to screen coordinates
     const toScreenCoordinates = (x, y) => {
+        // Function to convert grid coordinates to screen coordinates
         return {
             x: (x * zoom) + pan.x,
             y: (y * zoom) + pan.y,
         };
     };
 
-    // useEffect hook to handle the drawing of the grid and dots
+    //////////////////////// Handling Side Effects ////////////////////////
+
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
