@@ -1,0 +1,11 @@
+.drawing-canvas {
+    width: 100vw;
+    height: 100vh;
+    background-color: white;
+    display: block;
+    cursor: crosshair;
+}
+
+.drawing-canvas:active {
+    cursor: grabbing;
+}
