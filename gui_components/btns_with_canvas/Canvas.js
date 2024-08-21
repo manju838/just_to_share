@@ -2,6 +2,31 @@ import React, { useEffect, useRef, useState } from 'react';
 import './Canvas.css';
 
 const Canvas = ({ isDrawing, isMoving, isDelete }) => {
+
+    /*
+    useState(): Hook to add a state variable to your component.
+    useRef(): Hook to reference a value that’s not needed for rendering
+    useEffect(): Hook to synchronize a component with an external system.(control a non-React component based on the React state)
+
+    => If a React event object is returned by the eventhandler, it is a "Synthetic Event".(Eg: MouseEvent, DragEvent, KeyboardEvent, PointerEvent, TouchEvent)
+
+    1) https://react.dev/reference/react-dom/components/common#handling-pointer-events
+    2) https://www.w3schools.com/jsref/event_onmouseover.asp
+
+
+    The following are explanations for common mouseevents:
+
+    <div
+    onClick={e => console.log('Executes fn when clicked')}
+    onMouseEnter={e => console.log('Fires when the pointer moves inside an element')}
+    onMouseLeave={e => console.log('Fires when the pointer leaves an element')}
+    onMouseDown={e => console.log('Fires when the pointer is pressed down')}◘
+    onMouseUp={e => console.log('Fires when the pointer is released')}
+    onMouseOver={e => console.log('Fires when pointer is moved over an element')}
+    onDoubleClick={e=> console.log('Fires when pointer clicked twice')}
+    />
+    */
+
     //////////////////////// State Management ////////////////////////
 
     //////// Variable Type1: Canvas Reference ////////
@@ -33,7 +58,7 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
         // Function to start panning
         if (!isDrawing) {  // Disable panning when in Draw Wall mode
             setIsPanning(true);
-            setStartPos({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+            setStartPos({ x: e.clientX - pan.x, y: e.clientY - pan.y });//clientx and clienty are horizontal and vertical coordinate within the application's viewport (https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/clientX)
         }
         else if (!isMoving){
 
