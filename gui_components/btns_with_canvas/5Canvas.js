@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './Canvas.css';
 
-/* Drawing lines looked right but panning is always on, check the code and edit */
-const Canvas = ({ isDrawing, isMoving, isDelete }) => {
+/* Drawing is working+ graph is added+pan+zoom working */
 
+const Canvas = ({ isDrawing, isMoving, isDelete }) => {
     const canvasRef = useRef(null);
 
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -17,11 +17,13 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
     const [draggingDot, setDraggingDot] = useState(null);
     const [hoveredDot, setHoveredDot] = useState(null);
 
+    const [graph, setGraph] = useState({ nodes: {}, edges: [] });  // Initialize graph state
+
     const majorGridSize = 100;
     const minorGridSize = majorGridSize / 10;
 
     const startPan = (e) => {
-        if (!isDrawing) {  // Disable panning when in Draw Wall mode
+        if (!(isDrawing || isMoving || isDelete)) {  // Disable panning when any button is active
             setIsPanning(true);
             setStartPos({ x: e.clientX - pan.x, y: e.clientY - pan.y });
         }
@@ -71,10 +73,22 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
             const newDots = [...dots, { x: gridX, y: gridY }];
             setDots(newDots);
 
+            const newGraph = { ...graph };
+
+            // Add a new node to the graph
+            const nodeId = Object.keys(newGraph.nodes).length + 1;
+            newGraph.nodes[nodeId] = { x: gridX, y: gridY };
+
             if (newDots.length > 1) {
                 const newLines = [...lines, { start: newDots[newDots.length - 2], end: newDots[newDots.length - 1] }];
                 setLines(newLines);
+
+                // Add an edge between the last two nodes
+                const lastNodeId = nodeId - 1;
+                newGraph.edges.push({ start: lastNodeId, end: nodeId });
             }
+
+            setGraph(newGraph);
         }
     };
 
@@ -106,8 +120,13 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
                 return line;
             });
 
+            const newGraph = { ...graph };
+            const nodeId = draggingDot + 1;  // Node IDs are 1-based
+            newGraph.nodes[nodeId] = { x: gridX, y: gridY };
+
             setDots(newDots);
             setLines(newLines);
+            setGraph(newGraph);
         }
     };
 
@@ -204,18 +223,25 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
         drawGrid();
     }, [pan, zoom, dots, lines, hoveredDot]);
 
+    useEffect(() => {
+        if (!isDrawing && graph.edges.length > 0) {
+            console.log("Graph:", graph);
+        }
+    }, [isDrawing, graph]);
+
     return (
         <canvas
             ref={canvasRef}
             className="drawing-canvas"
             width={window.innerWidth}
             height={window.innerHeight}
-            onMouseDown={isDrawing ? handleCanvasClick : startPan}
+            onMouseDown={startPan}
             onMouseMove={handleMouseMove}
-            onMouseUp={endDragDot}
-            onMouseLeave={endDragDot}
+            onMouseUp={endPan}
             onWheel={handleZoom}
-        ></canvas>
+            onClick={handleCanvasClick}
+            onMouseLeave={endPan}
+        />
     );
 };
 
