@@ -2,18 +2,29 @@ import React, { useEffect, useRef, useState } from 'react';
 import './Canvas.css';
 import Graph from 'graph-data-structure';
 
-/* Buggy code with drawing + dot highlighting+ new npm based graph implementation */
+/* Buggy code with drawing + dot highlighting+ new npm based graph implementation 
+Latest code before rewriting again
+*/
 
 const Canvas = ({ isDrawing, isMoving, isDelete }) => {
     const canvasRef = useRef(null);
+
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+
     const [zoom, setZoom] = useState(1);
+
+
+
     const [dots, setDots] = useState([]);
     const [lines, setLines] = useState([]);
+
+
     const [draggingDot, setDraggingDot] = useState(null);
     const [hoveredDot, setHoveredDot] = useState(null);
+
+
     const graph = useRef(Graph());
     const [lastNodeId, setLastNodeId] = useState(null);
 
@@ -68,15 +79,31 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
     };
 
     const drawDot = (ctx, x, y, isHovered) => {
-        const dotSize = 5 / zoom;
-        ctx.beginPath();
-        ctx.arc(x, y, dotSize, 0, 2 * Math.PI);
-        ctx.fillStyle = isHovered ? 'red' : 'blue';
-        ctx.fill();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1 / zoom;
-        ctx.stroke();
-        ctx.closePath();
+        // This draws the wall endpoints and if mouse is hovered, then it highlights the change
+
+         // Inner circle (or regular dot) for all dots
+         const innerDotSize = 2 / zoom;
+         ctx.beginPath();
+         ctx.arc(x, y, innerDotSize, 0, 2 * Math.PI);
+         ctx.fillStyle = isHovered ? 'red' : 'blue'; // Solid red if hovered, otherwise blue
+         ctx.fill();
+         ctx.strokeStyle = 'black';
+         ctx.lineWidth = 1 / zoom;
+         ctx.stroke();
+         ctx.closePath();
+
+        if (isHovered) {
+            // Outer circle for the hovered dot
+            const outerDotSize = 6 / zoom;
+            ctx.beginPath();
+            ctx.arc(x, y, outerDotSize, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; // Semi-transparent red
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1 / zoom;
+            ctx.stroke();
+            ctx.closePath();
+        }
     };
 
     const calculateGridCoordinates = (x, y) => {
@@ -96,8 +123,14 @@ const Canvas = ({ isDrawing, isMoving, isDelete }) => {
             const { x: gridX, y: gridY } = calculateGridCoordinates(x, y);
             const nodeId = `${gridX},${gridY}`;
 
+            /*
+                Strict Equality (===) compares both the value and the type while Loose Equality (==) compares the values after converting them to a common type (type coercion).
+            */
+
             if (graph.current.adjacent(nodeId).length === 0) {
-                graph.current.addNode(nodeId);
+                // Length of array of nodes adjacent to nodeId is 0
+                
+                graph.current.addNode(nodeId); // Add node to graph
 
                 if (lastNodeId) {
                     graph.current.addEdge(lastNodeId, nodeId);
