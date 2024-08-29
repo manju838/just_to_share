@@ -1,0 +1,82 @@
+/* .upload-box {
+    width: 100%;
+    height: 200px;
+    border: 2px dashed #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.upload-box:hover {
+    background-color: #f8f8f8;
+}
+
+.upload-box p {
+    font-size: 16px;
+    color: #888;
+} */
+
+/* src/components/UploadBox.css
+.upload-box {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.upload-box.active {
+    background-color: #f0f0f0;
+}
+
+.upload-box-content p {
+    margin: 0;
+    font-size: 16px;
+    color: #777;
+} */
+
+.upload-box-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.upload-box {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 300px; /* Adjust width as needed */
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px; /* Adjust height as needed */
+    background-color: #f3f3f3;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-right: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #4caf50; /* Green color for progress */
+}
+
+.progress-text {
+    font-size: 16px; /* Adjust font size as needed */
+    font-weight: bold;
+}
